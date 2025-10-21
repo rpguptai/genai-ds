@@ -1,118 +1,121 @@
-RAG (Retrieval-Augmented Generation) with LangChain-style architecture and local Ollama LLM
-======================================================================================
+# RAG Model with LangChain and Ollama
 
-Author: Ravi
+**Author:** Ravi
 
-Overview
---------
-This project implements a production-ready RAG system over local PDF documents using:
+This project implements a Retrieval-Augmented Generation (RAG) model using LangChain and Ollama for leveraging local Large Language Models (LLMs). It provides a FastAPI-based API for querying the model and uploading new PDF documents.
 
-- FastAPI for API endpoints and automatic Swagger (/docs)
-- Ollama (local LLM) as the default local LLM client (switchable)
-- sentence-transformers for embeddings (small MiniLM model)
-- FAISS for the vector store (with an in-memory backend option for testing)
+## Features
 
-The project supports:
-- Indexing multiple PDFs from the `data/` folder
-- Uploading new PDFs via API and indexing them
-- Querying the RAG system with a choice of local LLM (e.g., `ollama`, `echo`)
-- Pluggable vector store (FAISS on disk, in-memory for tests)
-- Unit tests that mock heavy ML dependencies for fast execution
+*   **Local LLM Integration:** Utilizes Ollama to run local LLMs, with the ability to switch between models via an API parameter.
+*   **Multiple PDF Support:** Can process and index multiple PDF documents.
+*   **Vector Store:** Uses ChromaDB as a vector store, which can be externalized.
+*   **API with Swagger:** FastAPI provides an interactive API documentation (via Swagger UI) for easy testing of endpoints.
+*   **Document Upload:** API endpoint to upload new PDF documents to the knowledge base.
+*   **Production-Ready Code:** Structured with proper packages, configuration management, and documentation.
+*   **Unit Tests:** Includes unit tests for the API endpoints.
 
-Repository layout
------------------
-- app/
-  - config.py        -- configuration constants
-  - llms.py          -- local LLM wrappers (OllamaClient, EchoClient)
-  - pdf_loader.py    -- PDF loading utilities
-  - embeddings.py    -- embeddings helper (sentence-transformers, lazy-loaded)
-  - vector_store.py  -- pluggable vector store (faiss/in-memory)
-  - rag.py           -- RAG orchestration (indexing + answer flow)
-  - main.py          -- FastAPI app with endpoints (upload, query, reindex)
-- data/              -- sample PDFs (sample1.pdf, sample2.pdf)
-- requirements.txt   -- recommended dependencies
-- tests/             -- pytest-based unit tests
-- README.md          -- this file
+## Project Structure
 
-Quick start (macOS, zsh)
-------------------------
-1) Create and activate a virtual environment (Python 3.13.5):
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
+```
+/rag
+|-- app.py                  # FastAPI application
+|-- rag_service.py          # Core RAG logic
+|-- document_processor.py   # PDF processing
+|-- config.py               # Configuration settings
+|-- requirements.txt        # Python dependencies
+|-- .env                    # Environment variables
+|-- data/                   # Folder for PDF documents
+|   |-- sample1.pdf
+|   `-- sample2.pdf
+|-- tests/                  # Unit tests
+|   `-- test_app.py
+`-- README.md               # This file
 ```
 
-2) Install dependencies. Note: some packages (faiss-cpu, sentence-transformers) can be large; for a fast test run you can install a minimal subset first:
+## Setup and Installation
+
+1.  **Clone the repository:**
+    ```bash
+    git clone <repository-url>
+    cd rag
+    ```
+
+2.  **Create and activate a virtual environment:**
+    ```bash
+    python3 -m venv venv
+    source venv/bin/activate
+    ```
+
+3.  **Install dependencies:**
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+4.  **Set up Ollama:**
+    *   Install Ollama from [ollama.ai](https://ollama.ai/).
+    *   Pull the desired local LLMs. For example, to get `llama2`:
+        ```bash
+        ollama pull llama2
+        ```
+
+5.  **Create `.env` file:**
+    Create a `.env` file in the root of the project with the following content:
+    ```
+    VECTOR_STORE_PATH=./chroma_db
+    DEFAULT_LLM=llama2
+    DATA_FOLDER=data
+    API_HOST=0.0.0.0
+    API_PORT=8000
+    ```
+
+6.  **Add PDF files:**
+    Place your PDF files in the `data` directory.
+
+## Running the Application
+
+To start the FastAPI application, run:
 
 ```bash
-# Minimal deps for running the API & tests (without heavy ML libs)
-pip install -r requirements.txt
-# If you want to avoid heavy ML packages during development, you may edit requirements.txt
-# to only include: fastapi, uvicorn, httpx, pytest, pytest-asyncio, pydantic, python-multipart, numpy
+python app.py
 ```
 
-3) Start the API server:
+The application will start, and on the first run, it will process any PDF files in the `data` directory and create the ChromaDB vector store.
+
+Access the API documentation at `http://localhost:8000/docs`.
+
+## API Endpoints
+
+*   **POST /query**
+    *   **Summary:** Query the RAG model.
+    *   **Request Body:**
+        ```json
+        {
+          "query": "Your question here",
+          "llm_name": "llama2" 
+        }
+        ```
+    *   **Response:**
+        ```json
+        {
+          "response": "The model's answer."
+        }
+        ```
+
+*   **POST /upload-documents**
+    *   **Summary:** Upload new PDF documents.
+    *   **Request Body:** `multipart/form-data` with one or more files.
+    *   **Response:**
+        ```json
+        {
+          "message": "Documents uploaded and processed successfully.",
+          "uploaded_files": ["file1.pdf", "file2.pdf"]
+        }
+        ```
+
+## Running Tests
+
+To run the unit tests, use `pytest`:
 
 ```bash
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+pytest
 ```
-
-Open Swagger UI at: http://127.0.0.1:8000/docs
-
-API endpoints
--------------
-- GET /health
-  - Simple health check.
-
-- POST /reindex
-  - Rebuilds the index from all PDF files in the `data/` folder.
-  - Response: {"indexed": <num_documents_indexed>}
-
-- POST /query
-  - Request JSON: {"query": "...", "llm_name": "ollama", "top_k": 4}
-  - `llm_name` currently supports `ollama` and `echo` (debugging). Default: `ollama`.
-  - Response: {"answer": "...", "sources": [...]}
-
-- POST /upload
-  - Multipart file upload with key `file` (must be a PDF).
-  - The PDF is saved into the `data/` folder and newly discovered pages are indexed.
-  - Response: {"added": n, "skipped": m, "filename": "..."}
-
-Switching local LLMs
---------------------
-The API accepts an `llm_name` parameter in the `/query` payload. Supported values:
-- `ollama` (calls the local Ollama HTTP API at the URL in `app/config.py`)
-- `echo` (a deterministic debug LLM that echoes the prompt)
-
-To add or switch other local LLMs, extend `app/llms.py` and update the LLMFactory mapping.
-
-Testing
--------
-Run unit tests with pytest. Tests are designed to avoid heavy ML downloads by mocking/mutating the embedding and LLM functions.
-
-```bash
-pytest -q
-```
-
-Notes & production considerations
---------------------------------
-- The FAISS index persists to `vector_store/faiss_index` and metadata to `vector_store/faiss_index.meta`.
-- In production consider:
-  - Background indexing (Celery/RQ) and incremental updates
-  - Deduplication and document versioning
-  - Authentication, rate limiting, and request size limits
-  - Monitoring and health checks for Ollama
-  - Using a managed vector database (Milvus, Pinecone, Weaviate) for externalization
-
-Contact
--------
-Author: Ravi
-
-If you want, I can:
-- Add environment-based configuration (e.g., toggle vector backend via ENV)
-- Add Dockerfile and docker-compose with Ollama and the API
-- Wire a proper persistence layer for documents and metadata
-
-Enjoy!
-

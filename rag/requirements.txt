@@ -1,18 +1,16 @@
-fastapi>=0.95.0
-uvicorn[standard]>=0.22.0
-langchain>=0.0.400
-ollama>=0.1.0
-pydantic>=2.5.1
-python-multipart>=0.0.6
-faiss-cpu>=1.7.4
-sentence-transformers>=2.2.2
-pypdf>=3.16.0
-pytest>=7.4.0
-httpx>=0.25.0
-pytest-asyncio>=0.22.0
-typing-extensions>=4.8.0
-
-# Optional for embedding/model variations
-# transformers
-# torch
-
+fastapi
+uvicorn
+pydantic
+pydantic-settings
+langchain
+langchain-community
+langchain-huggingface
+langchain-text-splitters
+ollama
+pypdf
+sentence-transformers
+faiss-cpu
+pytest
+httpx
+python-dotenv
+urllib3<2.4.0
