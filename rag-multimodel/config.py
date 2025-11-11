@@ -1,0 +1,34 @@
+"""
+config.py - Centralized and validated configuration settings.
+
+Author: Ravi
+Date: 2023-10-29
+
+This file uses Pydantic's BaseSettings to define and validate all
+configuration variables for the application, loading them from environment
+variables and a .env file.
+"""
+
+from pydantic_settings import BaseSettings
+from pydantic import ConfigDict
+
+class Settings(BaseSettings):
+    model_config = ConfigDict(env_file=".env", extra='ignore')
+
+    # --- Vector Store Configuration ---
+    vector_store_path: str = "./vector_store"
+
+    # --- LLM Configuration ---
+    default_llm: str = "gemma3"
+    multimodal_llm: str = "llava"
+
+    # --- Data Configuration ---
+    data_folder: str = "data"
+    image_output_folder: str = "data/images"
+
+    # --- API Configuration ---
+    api_host: str = "0.0.0.0"
+    api_port: int = 8000
+
+# Create a single, validated settings instance
+settings = Settings()
